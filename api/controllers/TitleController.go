@@ -19,11 +19,19 @@ func (server *Server) GetTitles(w http.ResponseWriter, r *http.Request) {
 	urlParams := r.URL.Query()
 	title := urlParams.Get("title")
 	n := urlParams.Get("count")
+	brand := urlParams.Get("brand")
 
 	//convert string to interger
 	nAlternatives, _ := strconv.Atoi(n)
-	//"Give me 3 alternate text for 'Enjoy 25% off orders in the sale when using this ASOS voucher code'"
-	prompt := fmt.Sprintf("Give me %v alternate text for '%v'", nAlternatives, title)
+
+	var prompt string
+	// Write an if statement to check if brand is empty or not
+	if brand == "" {
+		prompt = fmt.Sprintf("Give me %v alternate text for '%v' with effective SEO", nAlternatives, title)
+	} else {
+		prompt = fmt.Sprintf("Give me %v alternate text for '%v' in the style of %v", nAlternatives, title, brand)
+	}
+
 	alternateTitles := connectToChatGPTAndGetTitles(prompt, nAlternatives)
 
 	w.Header().Set("Content-Type", "application/json")

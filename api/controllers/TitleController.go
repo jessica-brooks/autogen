@@ -19,7 +19,6 @@ import (
 func (server *Server) GetTitles(w http.ResponseWriter, r *http.Request) {
 	urlParams := r.URL.Query()
 	title := urlParams.Get("title")
-	// brand := urlParams.Get("brand")
 	n := urlParams.Get("count")
 	brand := urlParams.Get("brand")
 

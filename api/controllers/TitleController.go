@@ -18,12 +18,13 @@ import (
 func (server *Server) GetTitles(w http.ResponseWriter, r *http.Request) {
 	urlParams := r.URL.Query()
 	title := urlParams.Get("title")
+	brand := urlParams.Get("brand")
 	n := urlParams.Get("count")
 
 	//convert string to interger
 	nAlternatives, _ := strconv.Atoi(n)
 	//"Give me 3 alternate text for 'Enjoy 25% off orders in the sale when using this ASOS voucher code'"
-	prompt := fmt.Sprintf("Give me %v alternate text for '%v'", nAlternatives, title)
+	prompt := fmt.Sprintf("Give me %v alternate text for '%v' in style of %v", nAlternatives, title, brand)
 	alternateTitles := connectToChatGPTAndGetTitles(prompt, nAlternatives)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -85,30 +86,6 @@ func connectToChatGPTAndGetTitles(prompt string, nAlternatives int) []string {
 	for _, choice := range responseObject["choices"].([]interface{}) {
 		alternateTitles = append(alternateTitles, choice.(map[string]interface{})["text"].(string))
 	}
-
-	//alternatives := responseObject["choices"].([]interface{})[0].(map[string]interface{})["text"].(string)
-	//fmt.Println(alternatives)
-
-	// c := openai.NewClient(apiKey)
-	// ctx := context.Background()
-
-	// req := openai.CompletionRequest{
-	// 	Model:  "text-davinci-003",
-	// 	Prompt: "Give me 3 alternate text for 'Enjoy 25% off orders in the sale when using this ASOS voucher code'",
-	// 	N:      howMany,
-	// }
-	// resp, err := c.CreateCompletion(ctx, req)
-	// if err != nil {
-	// 	fmt.Printf("Completion error: %v\n", err)
-	// 	return nil
-	// }
-
-	// if len(resp.Choices) > 0 {
-	// 	for _, choice := range resp.Choices {
-	// 		println(choice.Text)
-	// 		alternateTitles = append(alternateTitles, choice.Text)
-	// 	}
-	// }
 
 	return alternateTitles
 }

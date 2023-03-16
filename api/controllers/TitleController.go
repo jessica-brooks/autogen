@@ -93,3 +93,50 @@ func connectToChatGPTAndGetTitles(prompt string, nAlternatives int) []string {
 
 	return alternateTitles
 }
+
+// send feedback to chatGPT
+func (server *Server) SendFeedback(w http.ResponseWriter, r *http.Request) {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Some error occured. Err: %s", err)
+	}
+
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	//read title from post request
+	title := r.FormValue("title")
+	alternative := r.FormValue("alternative")
+	label, _ := strconv.Atoi(r.FormValue("label"))
+
+	//"Give me 3 alternate text for 'Enjoy 25% off orders in the sale when using this ASOS voucher code'"
+	prompt := fmt.Sprintf("Give me alternate text for '%v'", title)
+
+	feedbackRequestBody, err := json.Marshal(map[string]interface{}{
+		"model":        "text-davinci-002",
+		"document":     prompt,
+		"search_model": "text-davinci-002",
+		"model_bias":   0,
+		"query":        alternative,
+		"label":        label,
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	feedbackRequest, err := http.NewRequest("POST", "https://api.openai.com/v1/feedbacks", bytes.NewBuffer(feedbackRequestBody))
+	if err != nil {
+		panic(err)
+	}
+	feedbackRequest.Header.Set("Content-Type", "application/json")
+	feedbackRequest.Header.Set("Authorization", "Bearer "+apiKey)
+
+	// Send the API request and parse the response
+	client := &http.Client{}
+	_, err = client.Do(feedbackRequest)
+	if err != nil {
+		panic(err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("Feedback sent successfully"))
+}

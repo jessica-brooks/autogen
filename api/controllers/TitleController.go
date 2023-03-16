@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"fmt"
 	"os"
@@ -18,13 +19,13 @@ import (
 func (server *Server) GetTitles(w http.ResponseWriter, r *http.Request) {
 	urlParams := r.URL.Query()
 	title := urlParams.Get("title")
-	brand := urlParams.Get("brand")
+	// brand := urlParams.Get("brand")
 	n := urlParams.Get("count")
 
 	//convert string to interger
 	nAlternatives, _ := strconv.Atoi(n)
 	//"Give me 3 alternate text for 'Enjoy 25% off orders in the sale when using this ASOS voucher code'"
-	prompt := fmt.Sprintf("Give me %v alternate text for '%v' in style of %v", nAlternatives, title, brand)
+	prompt := fmt.Sprintf("Give me alternate text for '%v'", title)
 	alternateTitles := connectToChatGPTAndGetTitles(prompt, nAlternatives)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -83,8 +84,11 @@ func connectToChatGPTAndGetTitles(prompt string, nAlternatives int) []string {
 	var responseObject map[string]interface{}
 	json.Unmarshal(responseBody, &responseObject)
 
-	for _, choice := range responseObject["choices"].([]interface{}) {
-		alternateTitles = append(alternateTitles, choice.(map[string]interface{})["text"].(string))
+	// alternatives := responseObject["choices"].([]interface{})[0].(map[string]interface{})["text"].(string)
+
+	for _, v := range responseObject["choices"].([]interface{}) {
+		alternateTitle := v.(map[string]interface{})["text"].(string)
+		alternateTitles = append(alternateTitles, strings.Replace(alternateTitle, "\n\n", "", -1))
 	}
 
 	return alternateTitles

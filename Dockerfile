@@ -1,4 +1,4 @@
-FROM golang:1.16-alpine AS builder
+FROM golang:1.19-alpine AS builder
 
 # Move to working directory (/build).
 WORKDIR /build
@@ -12,8 +12,6 @@ COPY .env.template ./.env
 
 # Copy the code into the container.
 COPY ./main.go .
-COPY ./messages ./messages
-COPY ./models   ./models
 COPY ./api ./api
 
 # Set-up the build configuration for the go build.

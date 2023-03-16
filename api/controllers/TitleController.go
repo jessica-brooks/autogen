@@ -1,62 +1,114 @@
 package controllers
 
 import (
+	"bytes"
 	"encoding/json"
+	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 
-	"context"
 	"fmt"
 	"os"
 
-	openai "github.com/sashabaranov/go-openai"
+	"github.com/joho/godotenv"
 )
 
 // get titles from chatGPT
 func (server *Server) GetTitles(w http.ResponseWriter, r *http.Request) {
 	urlParams := r.URL.Query()
-
 	title := urlParams.Get("title")
-	howMany := urlParams.Get("count")
+	n := urlParams.Get("count")
 
 	//convert string to interger
-	c, _ := strconv.Atoi(howMany)
-
-	alternateTitles := connectToChatGPTAndGetTitles(title, c)
+	nAlternatives, _ := strconv.Atoi(n)
+	//"Give me 3 alternate text for 'Enjoy 25% off orders in the sale when using this ASOS voucher code'"
+	prompt := fmt.Sprintf("Give me %v alternate text for '%v'", nAlternatives, title)
+	alternateTitles := connectToChatGPTAndGetTitles(prompt, nAlternatives)
 
 	w.Header().Set("Content-Type", "application/json")
-
 	json.NewEncoder(w).Encode(alternateTitles)
 }
 
-func connectToChatGPTAndGetTitles(title string, howMany int) []string {
+func connectToChatGPTAndGetTitles(prompt string, nAlternatives int) []string {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Some error occured. Err: %s", err)
+	}
 	var alternateTitles []string
 	apiKey := os.Getenv("OPENAI_API_KEY")
+
 	if apiKey == "" {
 		fmt.Println("OPENAI_API_KEY environment variable not set")
 		return nil
 	}
 
-	c := openai.NewClient(apiKey)
-	ctx := context.Background()
+	var modelEngine = "text-davinci-002"
+	var temperature = 0.7
+	var maxTokens = 60
 
-	req := openai.CompletionRequest{
-		Model:     openai.GPT3Ada,
-		MaxTokens: 5,
-		Prompt:    title,
-		N:         howMany,
-	}
-	resp, err := c.CreateCompletion(ctx, req)
+	// Generate the request body
+	requestBody, err := json.Marshal(map[string]interface{}{
+		"prompt":      prompt,
+		"temperature": temperature,
+		"max_tokens":  maxTokens,
+		"n":           nAlternatives,
+	})
 	if err != nil {
-		fmt.Printf("Completion error: %v\n", err)
-		return nil
+		panic(err)
 	}
 
-	if len(resp.Choices) > 0 {
-		alternateTitles = append(alternateTitles, resp.Choices[0].Text)
-	} else {
-		fmt.Println("No completions returned")
+	// Generate the API request
+	request, err := http.NewRequest("POST", "https://api.openai.com/v1/engines/"+modelEngine+"/completions", bytes.NewBuffer(requestBody))
+	if err != nil {
+		panic(err)
 	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Authorization", "Bearer "+apiKey)
+
+	// Send the API request and parse the response
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		panic(err)
+	}
+	defer response.Body.Close()
+
+	responseBody, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	var responseObject map[string]interface{}
+	json.Unmarshal(responseBody, &responseObject)
+
+	for _, choice := range responseObject["choices"].([]interface{}) {
+		alternateTitles = append(alternateTitles, choice.(map[string]interface{})["text"].(string))
+	}
+
+	//alternatives := responseObject["choices"].([]interface{})[0].(map[string]interface{})["text"].(string)
+	//fmt.Println(alternatives)
+
+	// c := openai.NewClient(apiKey)
+	// ctx := context.Background()
+
+	// req := openai.CompletionRequest{
+	// 	Model:  "text-davinci-003",
+	// 	Prompt: "Give me 3 alternate text for 'Enjoy 25% off orders in the sale when using this ASOS voucher code'",
+	// 	N:      howMany,
+	// }
+	// resp, err := c.CreateCompletion(ctx, req)
+	// if err != nil {
+	// 	fmt.Printf("Completion error: %v\n", err)
+	// 	return nil
+	// }
+
+	// if len(resp.Choices) > 0 {
+	// 	for _, choice := range resp.Choices {
+	// 		println(choice.Text)
+	// 		alternateTitles = append(alternateTitles, choice.Text)
+	// 	}
+	// }
 
 	return alternateTitles
 }

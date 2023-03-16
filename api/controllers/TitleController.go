@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"fmt"
 	"os"
@@ -18,6 +19,7 @@ import (
 func (server *Server) GetTitles(w http.ResponseWriter, r *http.Request) {
 	urlParams := r.URL.Query()
 	title := urlParams.Get("title")
+	// brand := urlParams.Get("brand")
 	n := urlParams.Get("count")
 	brand := urlParams.Get("brand")
 
@@ -29,7 +31,7 @@ func (server *Server) GetTitles(w http.ResponseWriter, r *http.Request) {
 	if brand == "" {
 		prompt = fmt.Sprintf("Give me %v alternate text for '%v' with effective SEO", nAlternatives, title)
 	} else {
-		prompt = fmt.Sprintf("Give me %v alternate text for '%v' in the style of %v", nAlternatives, title, brand)
+		prompt = fmt.Sprintf("Give me alternate text for '%v' in the style of %v", title, brand)
 	}
 
 	alternateTitles := connectToChatGPTAndGetTitles(prompt, nAlternatives)
@@ -90,33 +92,12 @@ func connectToChatGPTAndGetTitles(prompt string, nAlternatives int) []string {
 	var responseObject map[string]interface{}
 	json.Unmarshal(responseBody, &responseObject)
 
-	for _, choice := range responseObject["choices"].([]interface{}) {
-		alternateTitles = append(alternateTitles, choice.(map[string]interface{})["text"].(string))
+	// alternatives := responseObject["choices"].([]interface{})[0].(map[string]interface{})["text"].(string)
+
+	for _, v := range responseObject["choices"].([]interface{}) {
+		alternateTitle := v.(map[string]interface{})["text"].(string)
+		alternateTitles = append(alternateTitles, strings.Replace(alternateTitle, "\n\n", "", -1))
 	}
-
-	//alternatives := responseObject["choices"].([]interface{})[0].(map[string]interface{})["text"].(string)
-	//fmt.Println(alternatives)
-
-	// c := openai.NewClient(apiKey)
-	// ctx := context.Background()
-
-	// req := openai.CompletionRequest{
-	// 	Model:  "text-davinci-003",
-	// 	Prompt: "Give me 3 alternate text for 'Enjoy 25% off orders in the sale when using this ASOS voucher code'",
-	// 	N:      howMany,
-	// }
-	// resp, err := c.CreateCompletion(ctx, req)
-	// if err != nil {
-	// 	fmt.Printf("Completion error: %v\n", err)
-	// 	return nil
-	// }
-
-	// if len(resp.Choices) > 0 {
-	// 	for _, choice := range resp.Choices {
-	// 		println(choice.Text)
-	// 		alternateTitles = append(alternateTitles, choice.Text)
-	// 	}
-	// }
 
 	return alternateTitles
 }

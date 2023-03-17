@@ -28,11 +28,12 @@ func (server *Server) GetTitles(w http.ResponseWriter, r *http.Request) {
 	var prompt string
 	// Write an if statement to check if brand is empty or not
 	if brand == "" {
-		prompt = fmt.Sprintf("Give me %v alternate text for '%v' with effective SEO", nAlternatives, title)
+		prompt = fmt.Sprintf("Give me %v alternate text for '%v' that are more catchy", nAlternatives, title)
 	} else {
-		prompt = fmt.Sprintf("Give me alternate text for '%v' in the style of %v", title, brand)
+		prompt = fmt.Sprintf("Give me %v alternate text for '%v' in the style of %v", nAlternatives, title, brand)
 	}
 
+	fmt.Println("Asking OpenAI for: ", prompt)
 	alternateTitles := connectToChatGPTAndGetTitles(prompt, nAlternatives)
 
 	w.Header().Set("Content-Type", "application/json")

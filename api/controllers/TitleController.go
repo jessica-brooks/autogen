@@ -38,28 +38,31 @@ func preparePrompt(title string, nAlternatives int, brand string) string {
 
 	fmt.Println("Title is: ", title)
 
-	// Encode the title to deal with unescaped characters, mostly %
-	urlString := url.QueryEscape(title)
-	fmt.Println("URL encoded request is: ", urlString)
-
+	// Attempt to deal with unescaped characters, mostly %
 	// Decode the URL encoded title
-	title, err := url.QueryUnescape(urlString)
+	decodedTitle, err := url.QueryUnescape(title)
     if err != nil {
-        log.Fatalf("Some error occured. Err: %s", err)
+		fmt.Println("Error unescaping URL-encoded string:", err)
+		// If there is an error unescaping the URL-encoded string, try replacing any unencoded % characters with %25
+		if percentIndex := strings.Index(title, "%%"); percentIndex != -1 {
+			urlString := title[:percentIndex] + "%25" + title[percentIndex+1:]
+			decodedTitle, err = url.QueryUnescape(urlString)
+			if err != nil {
+				fmt.Println("Error unescaping URL-encoded string:", err)
+			}
+		} else {
+        	log.Fatalf("Some error occured. Err: %s", err)
+		}
     }
-	fmt.Println("URL decoded request is: ", title)
-
-	// Convert the title to UTF-8
-	utf8EncodedTitle := []byte(title)
-	fmt.Println("UTF-8 encoded request is: ", utf8EncodedTitle)
+	fmt.Println("URL decoded request is: ", decodedTitle)
 
 	// Prepare the prompt
 	var prompt string
 	// Write an if statement to check if brand is empty or not
 	if brand == "" {
-		prompt = fmt.Sprintf("Give me %v alternate text for '%v' that are more catchy", nAlternatives, title)
+		prompt = fmt.Sprintf("Give me %v alternate text for '%v' that are more catchy", nAlternatives, decodedTitle)
 	} else {
-		prompt = fmt.Sprintf("Give me %v alternate text for '%v' in the style of %v", nAlternatives, title, brand)
+		prompt = fmt.Sprintf("Give me %v alternate text for '%v' in the style of %v", nAlternatives, decodedTitle, brand)
 	}
 
 	fmt.Println("Asking OpenAI for: ", prompt)
@@ -79,6 +82,9 @@ func connectToChatGPTAndGetTitles(prompt string, nAlternatives int) []string {
 		fmt.Println("OPENAI_API_KEY environment variable not set")
 		return nil
 	}
+	
+	// Convert the prompt to UTF-8
+	utf8EncodedPrompt := []byte(prompt)
 
 	var modelEngine = "text-davinci-002"
 	var temperature = 0.7
@@ -86,7 +92,7 @@ func connectToChatGPTAndGetTitles(prompt string, nAlternatives int) []string {
 
 	// Generate the request body
 	requestBody, err := json.Marshal(map[string]interface{}{
-		"prompt":      prompt,
+		"prompt":      utf8EncodedPrompt,
 		"temperature": temperature,
 		"max_tokens":  maxTokens,
 		"n":           nAlternatives,

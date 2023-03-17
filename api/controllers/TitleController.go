@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -25,6 +26,34 @@ func (server *Server) GetTitles(w http.ResponseWriter, r *http.Request) {
 	//convert string to interger
 	nAlternatives, _ := strconv.Atoi(n)
 
+	prompt := preparePrompt(title, nAlternatives, brand)
+
+	alternateTitles := connectToChatGPTAndGetTitles(prompt, nAlternatives)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(alternateTitles)
+}
+
+func preparePrompt(title string, nAlternatives int, brand string) string {
+
+	fmt.Println("Title is: ", title)
+
+	// Encode the title to deal with unescaped characters, mostly %
+	urlString := url.QueryEscape(title)
+	fmt.Println("URL encoded request is: ", urlString)
+
+	// Decode the URL encoded title
+	title, err := url.QueryUnescape(urlString)
+    if err != nil {
+        log.Fatalf("Some error occured. Err: %s", err)
+    }
+	fmt.Println("URL decoded request is: ", title)
+
+	// Convert the title to UTF-8
+	utf8EncodedTitle := []byte(title)
+	fmt.Println("UTF-8 encoded request is: ", utf8EncodedTitle)
+
+	// Prepare the prompt
 	var prompt string
 	// Write an if statement to check if brand is empty or not
 	if brand == "" {
@@ -34,10 +63,8 @@ func (server *Server) GetTitles(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Println("Asking OpenAI for: ", prompt)
-	alternateTitles := connectToChatGPTAndGetTitles(prompt, nAlternatives)
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(alternateTitles)
+	return prompt
 }
 
 func connectToChatGPTAndGetTitles(prompt string, nAlternatives int) []string {
